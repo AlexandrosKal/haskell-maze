@@ -23,3 +23,10 @@ shuffleM n = do {
                 fmap ((:) n1) $ shuffleM $ (take r n) ++ (drop (r+1) n)
              }
 
+buildLabyrinth w h sw | w > 1 = (False, False) : buildLabyrinth (w-1) h sw
+                      | w == 1 && h > 1 = (False, False) : buildLabyrinth sw (h-1) sw
+                      | w == 1 && h == 1 = [(False, False)]
+
+makeMaze w h = Maze (buildLabyrinth w h w) w h
+
+kruskal (Maze l w h) = Maze l w h
