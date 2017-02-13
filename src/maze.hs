@@ -1,3 +1,4 @@
+import Debug.Trace
 import System.Random
 import System.IO.Unsafe
 import qualified Data.Set as Set
@@ -26,10 +27,45 @@ shuffleM n = do
 
 solvePerfect :: Maze -> (Int, Int) -> (Int, Int) -> [(Int,Int)]
 -- Uses recursive DFS to solve a perfect maze
-solvePerfect (maze c w h) (sx, sy) (gx, gy) 
-    | (sx, sy) == (gx, gy) = [(sx, sy)]
-    | fst (c !! (h * sx + sy + 1)) == False = [(sx, sy)] ++ solvePerfect maze (sx, sy + 1) (gx, gy)
-    | snd (c !! (h * sx + sy + 1)) == False = [(sx, sy)] ++ solvePerfect maze (sx + 1, sy) (gx, gy)
+solvePerfect (Maze c w h) (sx, sy) (gx, gy) = 
+    solvePerfectHelper (Maze c w h) (sx, sy) (gx, gy) [] 
+
+solvePerfectHelper :: Maze -> (Int, Int) -> (Int, Int) -> [(Int,Int)] -> [(Int,Int)]
+-- Helper for solvePerfect
+solvePerfectHelper (Maze c w h) (sx, sy) (gx, gy) path
+    | (sx, sy) == (gx, gy) = path ++ [(sx, sy)]
+    | legal /= [] = concat (map (\x -> solvePerfectHelper (Maze c w h) x (gx, gy) (path ++ [(sx, sy)])) legal)
+    | otherwise = []
+  where
+    legal = legalMoves (Maze c w h) (sx, sy) path
+
+legalMoves (Maze c w h) (sx, sy) path =
+    goRight (Maze c w h) (sx, sy) path ++ goLeft (Maze c w h) (sx, sy) path
+    ++ goUp (Maze c w h) (sx, sy) path ++ goDown (Maze c w h) (sx, sy) path
+
+inMaze (Maze c w h) (x, y)
+    | x >= 0 && x <= w && y >= 0 && y <= h = True
+    | otherwise = False
+
+goRight (Maze c w h) (sx, sy) path
+    | inMaze (Maze c w h) (sx + 1, sy) && fst (c !! (w * sy + sx)) == False
+      && not(elem (sx + 1, sy) path) = [(sx + 1, sy)]
+    | otherwise = []
+
+goLeft (Maze c w h) (sx, sy) path
+    | inMaze (Maze c w h) (sx - 1, sy) && fst (c !! (w * sy + (sx - 1))) == False
+      && not(elem (sx - 1, sy) path) = [(sx - 1, sy)]
+    | otherwise = []
+
+goUp (Maze c w h) (sx, sy) path
+    | inMaze (Maze c w h) (sx, sy - 1) && snd (c !! (w * (sy - 1) + sx)) == False
+      && not(elem (sx, sy - 1) path) = [(sx, sy - 1)]
+    | otherwise = []
+
+goDown (Maze c w h) (sx, sy) path
+    | inMaze (Maze c w h) (sx, sy + 1) && snd (c !! (w * sy + sx)) == False
+      && not(elem (sx, sy + 1) path) = [(sx, sy + 1)]
+    | otherwise = []
 
 buildLabyrinth w h sw | w > 1 = (True, True) : buildLabyrinth (w-1) h sw
                       | w == 1 && h > 1 = (True, True) : buildLabyrinth sw (h-1) sw
@@ -69,20 +105,26 @@ returnMaze (h:c) w p s | Set.member (p, p+1) s && Set.member (p, p+w) s = (False
 
 kruskal (Maze c w h) = Maze (returnMaze c w 0 $ Set.fromList $ solveKruskal (walls w h) (initSet 0 (w*h-1))) w h
 
-buildMaze (Maze c w h) w1 h1 | h1 == 2*h+1 = ""
-                             | (h1 == 0 || h1 == 2*h) && w1 == w-1 = "---+\n" ++ buildMaze (Maze c w h) 0 (h1+1)
-                             | (h1 == 0 || h1 == 2*h) && w1 == 0 = "+---+" ++ buildMaze (Maze c w h) (w1+1) h1
-                             | h1 == 0 || h1 == 2*h = "---+" ++ buildMaze (Maze c w h) (w1+1) h1
-                             | mod h1 2 == 0 && w1 == 0 && snd (c !! (w1 + ((div h1 2) - 1) * w)) == False = "+   +" ++ buildMaze (Maze c w h) (w1+1) h1
-                             | mod h1 2 == 0 && w1 < w-1 && snd (c !! (w1 + ((div h1 2) - 1) * w)) == False = "   +" ++ buildMaze (Maze c w h) (w1+1) h1
-                             | mod h1 2 == 0 && w1 == w-1 && snd (c !! (w1 + ((div h1 2) - 1) * w)) == False = "   +\n" ++ buildMaze (Maze c w h) 0 (h1+1)
-                             | mod h1 2 == 0 && w1 == 0 = "+---+" ++ buildMaze (Maze c w h) (w1+1) h1
-                             | mod h1 2 == 0 && w1 < w-1 = "---+" ++ buildMaze (Maze c w h) (w1+1) h1
-                             | mod h1 2 == 0 && w1 == w-1 = "---+\n" ++ buildMaze (Maze c w h) 0 (h1+1)
-                             | mod h1 2 == 1 && w1 == 0 && fst (c !! (w1 + (div h1 2) * w)) == False = "|    " ++ buildMaze (Maze c w h) (w1+1) h1
-                             | mod h1 2 == 1 && w1 < w-1 && fst (c !! (w1 + (div h1 2) * w)) == False = "    " ++ buildMaze (Maze c w h) (w1+1) h1
-                             | mod h1 2 == 1 && w1 == 0 = "|   |" ++ buildMaze (Maze c w h) (w1+1) h1
-                             | mod h1 2 == 1 && w1 < w-1 = "   |" ++ buildMaze (Maze c w h) (w1+1) h1
-                             | mod h1 2 == 1 && w1 == w-1 = "   |\n" ++ buildMaze (Maze c w h) 0 (h1+1)
-                            
-showMaze (Maze c w h) = buildMaze (Maze c w h) 0 0
+buildMaze (Maze c w h) w1 h1 s | h1 == 2*h+1 = ""
+                               | (h1 == 0 || h1 == 2*h) && w1 == w-1 = "---+\n" ++ buildMaze (Maze c w h) 0 (h1+1) s
+                               | (h1 == 0 || h1 == 2*h) && w1 == 0 = "+---+" ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | h1 == 0 || h1 == 2*h = "---+" ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | mod h1 2 == 0 && w1 == 0 && snd (c !! (w1 + ((div h1 2) - 1) * w)) == False = "+   +" ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | mod h1 2 == 0 && w1 < w-1 && snd (c !! (w1 + ((div h1 2) - 1) * w)) == False = "   +" ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | mod h1 2 == 0 && w1 == w-1 && snd (c !! (w1 + ((div h1 2) - 1) * w)) == False = "   +\n" ++ buildMaze (Maze c w h) 0 (h1+1) s
+                               | mod h1 2 == 0 && w1 == 0 = "+---+" ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | mod h1 2 == 0 && w1 < w-1 = "---+" ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | mod h1 2 == 0 && w1 == w-1 = "---+\n" ++ buildMaze (Maze c w h) 0 (h1+1) s
+                               | mod h1 2 == 1 && w1 == 0 && fst (c !! (w1 + (div h1 2) * w)) == False && not(Set.member (w1, (div h1 2)) s) = "|    " ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | mod h1 2 == 1 && w1 == 0 && fst (c !! (w1 + (div h1 2) * w)) == False = "| *  " ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | mod h1 2 == 1 && w1 < w-1 && fst (c !! (w1 + (div h1 2) * w)) == False && not(Set.member (w1, (div h1 2)) s) = "    " ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | mod h1 2 == 1 && w1 < w-1 && fst (c !! (w1 + (div h1 2) * w)) == False = " *  " ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | mod h1 2 == 1 && w1 == 0 && not(Set.member (w1, (div h1 2)) s) = "|   |" ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | mod h1 2 == 1 && w1 == 0 = "| * |" ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | mod h1 2 == 1 && w1 < w-1 && not(Set.member (w1, (div h1 2)) s) = "   |" ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | mod h1 2 == 1 && w1 < w-1 = " * |" ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | mod h1 2 == 1 && w1 == w-1 &&  not(Set.member (w1, (div h1 2)) s) = "   |\n" ++ buildMaze (Maze c w h) 0 (h1+1) s
+                               | mod h1 2 == 1 && w1 == w-1 = " * |\n" ++ buildMaze (Maze c w h) 0 (h1+1) s
+
+showMaze :: Maze -> [(Int, Int)] -> String
+showMaze (Maze c w h) s = buildMaze (Maze c w h) 0 0 (Set.fromList s) 
