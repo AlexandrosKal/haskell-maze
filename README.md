@@ -7,6 +7,7 @@ Example execution:
 ```sh
     ghci maze.hs
 ```
+Now in the interpreter:
 ```sh
     let a = kruskal $ makeMaze 3 3
     let b = braid a
