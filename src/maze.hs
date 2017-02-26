@@ -104,15 +104,18 @@ returnMaze (h:c) w p s | Set.member (p, p+1) s && Set.member (p, p+w) s = (False
 kruskal (Maze c w h) = Maze (returnMaze c w 0 $ Set.fromList $ solveKruskal (walls w h) (initSet 0 (w*h-1))) w h
 
 buildMaze (Maze c w h) w1 h1 s | h1 == 2*h+1 = ""
-                               | (h1 == 0 || h1 == 2*h) && w1 == w-1 = "---+\n" ++ buildMaze (Maze c w h) 0 (h1+1) s
+                               | (h1 == 0 || h1 == 2*h) && w1 == w-1 = cross ++ "---+\n" ++ buildMaze (Maze c w h) 0 (h1+1) s
                                | (h1 == 0 || h1 == 2*h) && w1 == 0 = "+---+" ++ buildMaze (Maze c w h) (w1+1) h1 s
                                | h1 == 0 || h1 == 2*h = "---+" ++ buildMaze (Maze c w h) (w1+1) h1 s
+                               | mod h1 2 == 0 && w1 == w-1 && snd (c !! (w1 + ((div h1 2) - 1) * w)) == False = cross ++ "   +\n" ++ 
+                                 buildMaze (Maze c w h) 0 (h1+1) s
+                               | mod h1 2 == 0 && w1 == w-1 = cross ++ "---+\n" ++ buildMaze (Maze c w h) 0 (h1+1) s
                                | mod h1 2 == 0 && w1 == 0 && snd (c !! (w1 + ((div h1 2) - 1) * w)) == False = "+   +" ++ buildMaze (Maze c w h) (w1+1) h1 s
-                               | mod h1 2 == 0 && w1 < w-1 && snd (c !! (w1 + ((div h1 2) - 1) * w)) == False = "   +" ++ buildMaze (Maze c w h) (w1+1) h1 s
-                               | mod h1 2 == 0 && w1 == w-1 && snd (c !! (w1 + ((div h1 2) - 1) * w)) == False = "   +\n" ++ buildMaze (Maze c w h) 0 (h1+1) s
+                               | mod h1 2 == 0 && w1 < w-1 && snd (c !! (w1 + ((div h1 2) - 1) * w)) == False = "   +" ++ buildMaze (Maze c w h) (w1+1) h1 s 
                                | mod h1 2 == 0 && w1 == 0 = "+---+" ++ buildMaze (Maze c w h) (w1+1) h1 s
                                | mod h1 2 == 0 && w1 < w-1 = "---+" ++ buildMaze (Maze c w h) (w1+1) h1 s
-                               | mod h1 2 == 0 && w1 == w-1 = "---+\n" ++ buildMaze (Maze c w h) 0 (h1+1) s
+                               | mod h1 2 == 1 && w1 == w-1 &&  not(Set.member (w1, (div h1 2)) s) = bar ++ "   |\n" ++ buildMaze (Maze c w h) 0 (h1+1) s
+                               | mod h1 2 == 1 && w1 == w-1 = bar ++ " * |\n" ++ buildMaze (Maze c w h) 0 (h1+1) s
                                | mod h1 2 == 1 && w1 == 0 && fst (c !! (w1 + (div h1 2) * w)) == False && 
                                  not(Set.member (w1, (div h1 2)) s) = "|    " ++ buildMaze (Maze c w h) (w1+1) h1 s
                                | mod h1 2 == 1 && w1 == 0 && fst (c !! (w1 + (div h1 2) * w)) == False = "| *  " ++ buildMaze (Maze c w h) (w1+1) h1 s
@@ -123,9 +126,9 @@ buildMaze (Maze c w h) w1 h1 s | h1 == 2*h+1 = ""
                                | mod h1 2 == 1 && w1 == 0 = "| * |" ++ buildMaze (Maze c w h) (w1+1) h1 s
                                | mod h1 2 == 1 && w1 < w-1 && not(Set.member (w1, (div h1 2)) s) = "   |" ++ buildMaze (Maze c w h) (w1+1) h1 s
                                | mod h1 2 == 1 && w1 < w-1 = " * |" ++ buildMaze (Maze c w h) (w1+1) h1 s
-                               | mod h1 2 == 1 && w1 == w-1 &&  not(Set.member (w1, (div h1 2)) s) = "   |\n" ++ buildMaze (Maze c w h) 0 (h1+1) s
-                               | mod h1 2 == 1 && w1 == w-1 = " * |\n" ++ buildMaze (Maze c w h) 0 (h1+1) s
-
+                               where cross = if w == 1 then "+" else ""
+                                     bar = if w == 1 then "|" else ""
+                    
 showMaze :: Maze -> [(Int, Int)] -> String
 showMaze (Maze c w h) s = buildMaze (Maze c w h) 0 0 (Set.fromList s)
 
@@ -152,6 +155,7 @@ removeRandWall (Maze c w h) p | mod p w /= 0 && fst(c !! (p-1)) == True = [(p-1,
                               | div p w > 0  && snd(c !! (p-w)) == True = [(p-w, p)]
                               | mod (p+1) w /= 0 && fst(c !! p) == True = [(p, p+1)]
                               | div p w < h-1 && snd(c !! p) == True = [(p, p+w)]
+                              | otherwise = []
 
 removeWalls (Maze c w h) p s = if p >= w*h 
                                then []
